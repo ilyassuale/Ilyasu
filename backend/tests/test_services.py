@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import base64
 import io
+import uuid
 from unittest.mock import MagicMock
 
 import numpy as np
@@ -44,8 +45,8 @@ def test_resume_intelligence():
     assert intel.reasoning
 
 
-def test_job_matcher():
-    import uuid
+def test_job_matcher(monkeypatch):
+    import numpy as np
 
     resume = ResumeSection(
         name="Jane",
@@ -69,6 +70,15 @@ def test_job_matcher():
             "company": "B",
         },
     ]
+
+    # Mock embeddings to avoid downloading real model weights in CI.
+    def _fake_encode(text: str) -> np.ndarray:
+        if "Python Backend" in text or "Python" in text:
+            return np.array([1.0, 0.0, 0.0, 0.0])
+        return np.array([0.0, 1.0, 0.0, 0.0])
+
+    monkeypatch.setattr("app.services.job_matcher._encode", _fake_encode)
+
     result = match_jobs(resume, jobs, top_k=2, resume_id=uuid.uuid4())
     assert len(result.top_matches) == 2
     assert result.top_matches[0].title == "Python Backend"
@@ -93,7 +103,8 @@ def test_feedback_generator():
     assert feedback["strengths"]
 
 
-def test_evaluate_answer(monkeypatch):
+@pytest.mark.asyncio
+async def test_evaluate_answer(monkeypatch):
     """Mock LLM and verify scoring."""
 
     def _fake_chat(*_args, **_kwargs):
@@ -114,14 +125,15 @@ def test_evaluate_answer(monkeypatch):
 
     monkeypatch.setattr("app.services.evaluator.chat", _fake_chat)
 
-    result = evaluate_answer("What is Python?", "Python is a programming language.", ["python"])
+    result = await evaluate_answer("What is Python?", "Python is a programming language.", ["python"])
     assert result.correctness == 85
     assert result.relevance == 90
     assert result.reasoning == "Good answer"
 
 
-def test_evaluate_answer_empty():
-    result = evaluate_answer("What is Python?", "")
+@pytest.mark.asyncio
+async def test_evaluate_answer_empty():
+    result = await evaluate_answer("What is Python?", "")
     assert result.correctness == 0
     assert result.reasoning == "No answer provided."
 
@@ -133,7 +145,8 @@ def test_compute_speech_metrics():
     assert metrics["pause_count"] >= 0
 
 
-def test_generate_question(monkeypatch):
+@pytest.mark.asyncio
+async def test_generate_question(monkeypatch):
     """Mock LLM and verify question generation."""
 
     def _fake_chat(*_args, **_kwargs):
@@ -147,12 +160,13 @@ def test_generate_question(monkeypatch):
     monkeypatch.setattr("app.services.interview_generator.chat", _fake_chat)
 
     resume = ResumeSection(name="A", skills=["Python"], experience=[], education=[])
-    result = generate_question("technical", resume, None, "medium", [])
+    result = await generate_question("technical", resume, None, "medium", [])
     assert result["text"] == "Explain OOP."
     assert result["difficulty"] == "medium"
 
 
-def test_build_questions(monkeypatch):
+@pytest.mark.asyncio
+async def test_build_questions(monkeypatch):
     def _fake_chat(*_args, **_kwargs):
         return {
             "text": "Question",
@@ -163,10 +177,8 @@ def test_build_questions(monkeypatch):
 
     monkeypatch.setattr("app.services.interview_generator.chat", _fake_chat)
 
-    import uuid
-
     resume = ResumeSection(name="B", skills=["Java"], experience=[], education=[])
-    questions = build_questions(["hr", "technical"], resume, None, "easy", uuid.uuid4())
+    questions = await build_questions(["hr", "technical"], resume, None, "easy", uuid.uuid4())
     assert len(questions) == 2
     assert questions[0].sequence == 1
 
@@ -200,6 +212,39 @@ def test_upload_file_minio(monkeypatch, tmp_path):
     key = upload_file(b"resume", "resume.pdf", "application/pdf")
     assert key.startswith("resumes/")
     fake_client.put_object.assert_called_once()
+
+
+def test_upload_file_minio_creates_bucket(monkeypatch, tmp_path):
+    """When bucket is missing, upload_file should create it."""
+    from app.services import storage
+
+    monkeypatch.setattr(storage.settings, "use_minio", True)
+    monkeypatch.setattr(storage.settings, "s3_bucket", "test-bucket")
+
+    fake_client = MagicMock()
+    fake_client.bucket_exists.return_value = False
+    monkeypatch.setattr(storage, "_get_minio_client", lambda: fake_client)
+
+    key = upload_file(b"resume", "resume.pdf", "application/pdf")
+    assert key.startswith("resumes/")
+    fake_client.make_bucket.assert_called_once_with("test-bucket")
+    fake_client.put_object.assert_called_once()
+
+
+def test_upload_file_minio_error_propagated(monkeypatch, tmp_path):
+    """put_object errors should propagate."""
+    from app.services import storage
+
+    monkeypatch.setattr(storage.settings, "use_minio", True)
+    monkeypatch.setattr(storage.settings, "s3_bucket", "test-bucket")
+
+    fake_client = MagicMock()
+    fake_client.bucket_exists.return_value = True
+    fake_client.put_object.side_effect = RuntimeError("storage down")
+    monkeypatch.setattr(storage, "_get_minio_client", lambda: fake_client)
+
+    with pytest.raises(RuntimeError):
+        upload_file(b"resume", "resume.pdf", "application/pdf")
 
 
 def test_upload_file_s3(monkeypatch, tmp_path):

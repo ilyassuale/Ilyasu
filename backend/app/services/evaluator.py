@@ -1,6 +1,7 @@
 """Evaluate candidate answers with LLM and rule-based metrics."""
 from __future__ import annotations
 
+import asyncio
 import re
 from typing import Any
 
@@ -25,7 +26,7 @@ Also include:
 Respond with valid JSON only."""
 
 
-def evaluate_answer(question: str, answer: str, expected_keywords: list[str] | None = None) -> EvaluationCriteria:
+async def evaluate_answer(question: str, answer: str, expected_keywords: list[str] | None = None) -> EvaluationCriteria:
     if not answer:
         return EvaluationCriteria(
             correctness=0,
@@ -50,7 +51,7 @@ Expected keywords: {', '.join(expected_keywords or [])}
 
 Evaluate the answer."""
 
-    result = chat(SYSTEM_PROMPT, user_prompt, temperature=0.2, parse_json_output=True)
+    result = await asyncio.to_thread(chat, SYSTEM_PROMPT, user_prompt, temperature=0.2, parse_json_output=True)
     if not isinstance(result, dict):
         result = {}
 

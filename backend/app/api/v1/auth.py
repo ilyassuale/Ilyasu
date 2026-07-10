@@ -25,6 +25,7 @@ from app.schemas.user import (
     PasswordResetConfirm,
     PasswordResetRequest,
     TokenOut,
+    TokenRefresh,
     UserCreate,
     UserLogin,
     UserOut,
@@ -94,14 +95,14 @@ async def login_json(payload: UserLogin, db: AsyncSession = Depends(get_db)) -> 
 
 
 @router.post("/refresh", response_model=TokenOut)
-async def refresh(token: str, db: AsyncSession = Depends(get_db)) -> dict[str, Any]:
-    payload = decode_token(token)
-    if not payload or payload.get("type") != "refresh":
+async def refresh(payload: TokenRefresh, db: AsyncSession = Depends(get_db)) -> dict[str, Any]:
+    token_payload = decode_token(payload.refresh_token)
+    if not token_payload or token_payload.get("type") != "refresh":
         raise HTTPException(status_code=401, detail="Invalid refresh token")
 
     from uuid import UUID
 
-    user_id = UUID(payload["sub"])
+    user_id = UUID(token_payload["sub"])
     user = (
         await db.execute(
             select(User).options(selectinload(User.profile)).where(User.id == user_id)

@@ -2,6 +2,8 @@
 from __future__ import annotations
 
 import base64
+import binascii
+import logging
 from datetime import UTC, datetime
 from uuid import UUID
 
@@ -90,7 +92,7 @@ async def start_interview(
             reasoning="",
         )
 
-    questions = build_questions(
+    questions = await build_questions(
         categories=categories,
         resume=resume or ResumeSection(),
         job=job,
@@ -187,12 +189,21 @@ async def submit_answer(
             whisper_result = transcribe_audio(audio_bytes)
             transcript = whisper_result.get("text", transcript)
             audio_url = "uploaded"
-        except Exception:
-            pass
+        except (binascii.Error, ValueError) as exc:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid audio data; unable to decode base64 payload",
+            ) from exc
+        except Exception as exc:
+            logging.exception("Failed to decode/transcribe interview audio")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to process audio for transcription",
+            ) from exc
 
     duration = payload.duration_seconds
     metrics = compute_speech_metrics(transcript, duration)
-    evaluation = evaluate_answer(question.text, transcript, question.expected_keywords or [])
+    evaluation = await evaluate_answer(question.text, transcript, question.expected_keywords or [])
 
     answer = Answer(
         question_id=question.id,

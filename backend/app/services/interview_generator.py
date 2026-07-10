@@ -1,6 +1,7 @@
 """Generate adaptive interview questions from resume and job."""
 from __future__ import annotations
 
+import asyncio
 import uuid
 from typing import Any
 
@@ -32,7 +33,7 @@ SYSTEM_PROMPT = (
 )
 
 
-def generate_question(
+async def generate_question(
     category: str,
     resume: ResumeSection,
     job: JobMatchItem | None,
@@ -61,7 +62,7 @@ Previous Q&A:
 
 Generate the next question."""
 
-    result = chat(SYSTEM_PROMPT, user_prompt, temperature=0.3, parse_json_output=True)
+    result = await asyncio.to_thread(chat, SYSTEM_PROMPT, user_prompt, temperature=0.3, parse_json_output=True)
     if not isinstance(result, dict):
         result = {
             "text": str(result),
@@ -72,7 +73,7 @@ Generate the next question."""
     return result
 
 
-def build_questions(
+async def build_questions(
     categories: list[str],
     resume: ResumeSection,
     job: JobMatchItem | None,
@@ -83,7 +84,7 @@ def build_questions(
     questions: list[QuestionOut] = []
     qas: list[dict[str, Any]] = []
     for i, category in enumerate(categories):
-        data = generate_question(category, resume, job, difficulty, qas)
+        data = await generate_question(category, resume, job, difficulty, qas)
         q = QuestionOut(
             id=uuid.uuid4(),
             sequence=start_sequence + i,

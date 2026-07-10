@@ -61,6 +61,10 @@ class TokenOut(BaseModel):
     user: UserOut
 
 
+class TokenRefresh(BaseModel):
+    refresh_token: str
+
+
 class PasswordResetRequest(BaseModel):
     email: EmailStr
 
