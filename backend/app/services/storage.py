@@ -4,7 +4,7 @@ from __future__ import annotations
 import os
 import uuid
 from io import BytesIO
-from typing import Any
+from typing import Any, cast
 
 import boto3
 from minio import Minio
@@ -63,3 +63,18 @@ def get_file_url(key: str) -> str:
     if settings.use_minio:
         return f"{settings.s3_endpoint}/{settings.s3_bucket}/{key}"
     return f"https://{settings.s3_bucket}.s3.{settings.s3_region}.amazonaws.com/{key}"
+
+
+def download_file(key: str) -> bytes:
+    """Download an object from the configured storage backend."""
+    if settings.use_minio:
+        client = _get_minio_client()
+        response = client.get_object(settings.s3_bucket, key)
+        try:
+            return response.read()
+        finally:
+            response.close()
+            response.release_conn()
+    client = _get_s3_client()
+    response = client.get_object(Bucket=settings.s3_bucket, Key=key)
+    return cast(bytes, response["Body"].read())

@@ -9,7 +9,7 @@ A cloud-native, modular platform that simulates real-time virtual job interviews
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │                              Client Layer                                    │
-│  React/Next.js SPA  ──  WebRTC (getUserMedia)  ──  WebSocket for realtime   │
+│  React/Next.js SPA  ──  WebRTC (getUserMedia)  ──  WebSocket for real-time  │
 └──────────────────────────────┬──────────────────────────────────────────────┘
                                │ HTTPS / WSS
 ┌──────────────────────────────▼──────────────────────────────────────────────┐

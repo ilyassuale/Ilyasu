@@ -16,8 +16,8 @@ from app.models.models import Job, Resume, User
 from app.schemas.resume import JobMatchOut, ResumeIntelligenceOut, ResumeOut, ResumeSection, ResumeUploadOut
 from app.services.job_matcher import match_jobs
 from app.services.resume_intelligence import analyze_resume
-from app.services.resume_parser import parse_resume
-from app.services.storage import upload_file
+from app.services.resume_parser import extract_text, parse_resume
+from app.services.storage import download_file, upload_file
 
 router = APIRouter(prefix="/resumes", tags=["Resumes"])
 
@@ -66,12 +66,15 @@ async def parse_resume_endpoint(
     if not resume:
         raise HTTPException(status_code=404, detail="Resume not found")
 
-    # In a real app, fetch from storage. For tests, use a placeholder.
-    # file_bytes = download_file(resume.file_key)
     start = time.time()
-    # Stubbed text extraction when file is in S3
-    text = "This is a placeholder resume text. Python, React, SQL, Docker, AWS, Machine Learning."
-    # TODO: download from storage and call extract_text()
+    try:
+        file_bytes = download_file(resume.file_key)
+    except Exception as exc:
+        raise HTTPException(
+            status_code=500, detail="Could not retrieve resume file from storage"
+        ) from exc
+
+    text = extract_text(file_bytes, resume.mime_type)
 
     parsed = parse_resume(text)
     resume.parsed_text = text

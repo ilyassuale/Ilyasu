@@ -8,7 +8,7 @@
 
 ## 2. Integration Tests
 
-- TestFastAPI + async test client (`httpx.AsyncClient`) for API routes.
+- Test FastAPI + async test client (`httpx.AsyncClient`) for API routes.
 - Test database with PostgreSQL in CI.
 - Mock external services (OpenAI, Whisper, S3) with `respx` or `unittest.mock`.
 

@@ -7,11 +7,13 @@ from fastapi import APIRouter, Depends, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import get_current_user
+from app.api.deps import RoleChecker, get_current_user
 from app.db.session import get_db
 from app.models.models import Company, Job, User
 
 router = APIRouter(prefix="/jobs", tags=["Jobs"])
+
+require_job_editor = RoleChecker(["recruiter", "admin"])
 
 
 @router.get("/")
@@ -46,9 +48,8 @@ async def list_jobs(
 async def create_job(
     payload: dict[str, Any],
     db: AsyncSession = Depends(get_db),
-    user: User = Depends(get_current_user),
+    user: User = Depends(require_job_editor),
 ) -> dict[str, Any]:
-    # Only recruiters/admins should create jobs; enforce via role check in real app
     job = Job(
         title=payload["title"],
         description=payload["description"],
