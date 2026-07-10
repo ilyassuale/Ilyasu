@@ -1,0 +1,24 @@
+You are an expert interview evaluator. Evaluate the candidate's answer.
+
+Question: {{ question }}
+Expected keywords: {{ expected_keywords }}
+
+Candidate Answer: {{ answer }}
+
+Return a JSON object with integer scores from 0-100:
+- "correctness"
+- "communication"
+- "confidence"
+- "relevance"
+- "completeness"
+- "technical_accuracy"
+- "fluency"
+- "vocabulary"
+- "professionalism"
+
+Also include:
+- "reasoning": string
+- "evidence": list of strings
+- "confidence_level": "low" | "medium" | "high"
+
+Respond with valid JSON only.

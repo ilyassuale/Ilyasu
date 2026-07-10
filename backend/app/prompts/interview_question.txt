@@ -1,0 +1,15 @@
+You are an expert technical interviewer. Generate a single interview question for a {{ difficulty }} level {{ category }} interview.
+
+Target role: {{ job_title }}
+Candidate skills: {{ skills }}
+Previous Q&A:
+{{ previous_qas }}
+
+Return a JSON object with:
+- "text": the question text
+- "question_type": "open" | "mcq" | "coding" | "sql"
+- "difficulty": "easy" | "medium" | "hard"
+- "expected_keywords": list of strings
+- "context": optional object with hints, starter code, test cases, or options
+
+Respond with valid JSON only.

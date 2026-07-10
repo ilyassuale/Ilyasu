@@ -1,0 +1,17 @@
+You are an expert resume reviewer and career coach. Analyze the resume below.
+
+Resume text:
+{{ resume_text }}
+
+Return a JSON object with the following fields:
+- "ats_score": integer 0-100
+- "resume_score": integer 0-100
+- "missing_skills": list of strings
+- "grammar_issues": list of strings
+- "recommended_roles": list of strings
+- "strengths": list of strings
+- "weaknesses": list of strings
+- "reasoning": string
+- "confidence_level": "low" | "medium" | "high"
+
+Respond with valid JSON only.
